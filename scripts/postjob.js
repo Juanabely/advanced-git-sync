@@ -1,5 +1,4 @@
 const fs = require('fs')
-const core = require('@actions/core')
 const { exec } = require('child_process')
 
 async function cleanup() {
@@ -50,7 +49,8 @@ async function cleanup() {
 
     console.log('Cleanup completed successfully')
   } catch (error) {
-    core.setFailed(`Cleanup failed: ${error.message}`)
+    console.error(`Cleanup failed: ${error.message}`)
+    process.exitCode = 1
   }
 }
 
