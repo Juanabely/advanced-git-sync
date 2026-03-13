@@ -54098,9 +54098,6 @@ class gitlabTagHelper {
         this.getProjectId = getProjectId;
     }
     getRepoPathFromConfig() {
-        if (this.config.gitlab?.projectId) {
-            return null;
-        }
         const owner = this.config.gitlab.owner;
         const repo = this.config.gitlab.repo;
         if (owner && repo) {
