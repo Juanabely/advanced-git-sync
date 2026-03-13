@@ -16,10 +16,6 @@ export class gitlabBranchHelper {
   ) {}
 
   private getRepoPathFromConfig(): string | null {
-    if (this.config.gitlab?.projectId) {
-      return null
-    }
-
     const owner = this.config.gitlab.owner
     const repo = this.config.gitlab.repo
 
@@ -66,7 +62,11 @@ export class gitlabBranchHelper {
       }
 
       if (filterOptions.pattern) {
-        const regex = new RegExp(filterOptions.pattern)
+        const safePattern = filterOptions.pattern
+          .replace(/[.+?^${}()|[\]\\]/g, '\\$&')
+          .replace(/\*/g, '.*')
+          .replace(/\?/g, '.')
+        const regex = new RegExp(safePattern)
         processedBranches = processedBranches.filter(branch =>
           regex.test(branch.name)
         )
