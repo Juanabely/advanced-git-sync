@@ -53611,15 +53611,23 @@ class gitlabBranchHelper {
         return processedBranches;
     }
     async update(name, commitSha) {
-        if (!this.repoPath) {
-            // If still no path, try getting path from config as last resort
-            this.repoPath = this.getRepoPathFromConfig();
-            if (!this.repoPath) {
+        const gitlabUrl = this.config.gitlab.host || 'https://gitlab.com';
+        let repoPathStr = '';
+        if (this.repoPath) {
+            repoPathStr = `${gitlabUrl}/${this.repoPath}.git`;
+        }
+        else {
+            const configPath = this.getRepoPathFromConfig();
+            if (configPath) {
+                repoPathStr = `${gitlabUrl}/${configPath}.git`;
+            }
+            else if (this.config.gitlab.projectId) {
+                repoPathStr = `${gitlabUrl}/api/v4/projects/${this.config.gitlab.projectId}`;
+            }
+            else {
                 throw new Error('Could not determine repository path');
             }
         }
-        const gitlabUrl = this.config.gitlab.host || 'https://gitlab.com';
-        const repoPath = `${gitlabUrl}/${this.repoPath}.git`;
         const tmpDir = path.join(process.cwd(), '.tmp-git');
         if (!fs.existsSync(tmpDir)) {
             fs.mkdirSync(tmpDir, { recursive: true });
@@ -53634,7 +53642,7 @@ class gitlabBranchHelper {
             cwd: tmpDir
         });
         await exec.exec('git', ['fetch', 'github', commitSha], { cwd: tmpDir });
-        const gitlabAuthUrl = `https://oauth2:${this.config.gitlab.token}@${repoPath.replace('https://', '')}`;
+        const gitlabAuthUrl = `https://oauth2:${this.config.gitlab.token}@${repoPathStr.replace(/^https?:\/\//, '')}`;
         await exec.exec('git', ['remote', 'add', 'gitlab', gitlabAuthUrl], {
             cwd: tmpDir
         });
@@ -54162,15 +54170,23 @@ class gitlabTagHelper {
             if (!this.repoPath) {
                 await this.syncTags();
             }
-            if (!this.repoPath) {
-                // If still no path, try getting path from config as last resort
-                this.repoPath = this.getRepoPathFromConfig();
-                if (!this.repoPath) {
+            const gitlabUrl = this.config.gitlab.host || 'https://gitlab.com';
+            let repoPathStr = '';
+            if (this.repoPath) {
+                repoPathStr = `${gitlabUrl}/${this.repoPath}.git`;
+            }
+            else {
+                const configPath = this.getRepoPathFromConfig();
+                if (configPath) {
+                    repoPathStr = `${gitlabUrl}/${configPath}.git`;
+                }
+                else if (this.config.gitlab.projectId) {
+                    repoPathStr = `${gitlabUrl}/api/v4/projects/${this.config.gitlab.projectId}`;
+                }
+                else {
                     throw new Error('Could not determine repository path');
                 }
             }
-            const gitlabUrl = this.config.gitlab.host || 'https://gitlab.com';
-            const repoPath = `${gitlabUrl}/${this.repoPath}.git`;
             const tmpDir = path.join(process.cwd(), '.tmp-git');
             if (!fs.existsSync(tmpDir)) {
                 fs.mkdirSync(tmpDir, { recursive: true });
@@ -54187,7 +54203,7 @@ class gitlabTagHelper {
             await exec.exec('git', ['fetch', 'gitHub', tag.commitSha], {
                 cwd: tmpDir
             });
-            const gitlabAuthUrl = `https://oauth2:${this.config.gitlab.token}@${repoPath.replace('https://', '')}`;
+            const gitlabAuthUrl = `https://oauth2:${this.config.gitlab.token}@${repoPathStr.replace(/^https?:\/\//, '')}`;
             await exec.exec('git', ['remote', 'add', 'gitlab', gitlabAuthUrl], {
                 cwd: tmpDir
             });
