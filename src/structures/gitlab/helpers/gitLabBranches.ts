@@ -93,7 +93,24 @@ export class gitlabBranchHelper {
       if (configPath) {
         repoPathStr = `${gitlabUrl}/${configPath}.git`
       } else if (this.config.gitlab.projectId) {
-        repoPathStr = `${gitlabUrl}/api/v4/projects/${this.config.gitlab.projectId}`
+        // Fetch the project details to get the actual path string for git
+        try {
+          const projectDetails = await this.gitlab.Projects.show(
+            this.config.gitlab.projectId
+          )
+          if (projectDetails && projectDetails.path_with_namespace) {
+            this.repoPath = projectDetails.path_with_namespace
+            repoPathStr = `${gitlabUrl}/${this.repoPath}.git`
+          } else {
+            throw new Error(
+              'Project details did not contain path_with_namespace'
+            )
+          }
+        } catch (error) {
+          throw new Error(
+            `Failed to fetch project details for projectId ${this.config.gitlab.projectId}: ${error instanceof Error ? error.message : String(error)}`
+          )
+        }
       } else {
         throw new Error('Could not determine repository path')
       }
