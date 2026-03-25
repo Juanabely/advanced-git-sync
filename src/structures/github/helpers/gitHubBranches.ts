@@ -15,10 +15,14 @@ export class githubBranchHelper {
     // Colorful console log for fetching branches
     core.info('\x1b[36m🌿 Fetching GitHub Branches...\x1b[0m')
 
-    // Fetch all branches
-    const { data: branches } = await this.octokit.rest.repos.listBranches({
-      ...this.repo
-    })
+    // Fetch all branches with pagination
+    const branches: GitHubBranch[] = await this.octokit.paginate(
+      this.octokit.rest.repos.listBranches,
+      {
+        ...this.repo,
+        per_page: 100
+      }
+    )
 
     interface GitHubBranch {
       name: string

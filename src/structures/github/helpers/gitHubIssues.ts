@@ -17,11 +17,14 @@ export class githubIssueHelper {
     try {
       core.info('\x1b[36m❗ Fetching GitHub Issues...\x1b[0m')
 
-      const { data: issues } = await this.octokit.rest.issues.listForRepo({
-        ...this.repo,
-        state: 'all',
-        per_page: 100
-      })
+      const issues: any[] = await this.octokit.paginate(
+        this.octokit.rest.issues.listForRepo,
+        {
+          ...this.repo,
+          state: 'all',
+          per_page: 100
+        }
+      )
 
       const processedIssues: Issue[] = issues
         .filter((issue: { pull_request?: any }) => !issue.pull_request)
@@ -72,10 +75,14 @@ export class githubIssueHelper {
       )
 
       // Fetch comments for a specific issue
-      const { data: comments } = await this.octokit.rest.issues.listComments({
-        ...this.repo,
-        issue_number: issueNumber
-      })
+      const comments: any[] = await this.octokit.paginate(
+        this.octokit.rest.issues.listComments,
+        {
+          ...this.repo,
+          issue_number: issueNumber,
+          per_page: 100
+        }
+      )
 
       // Process and transform comments
       const processedComments: Comment[] = comments.map(

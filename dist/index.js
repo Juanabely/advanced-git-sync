@@ -52507,9 +52507,10 @@ class githubBranchHelper {
     async fetch(filterOptions) {
         // Colorful console log for fetching branches
         core.info('\x1b[36m🌿 Fetching GitHub Branches...\x1b[0m');
-        // Fetch all branches
-        const { data: branches } = await this.octokit.rest.repos.listBranches({
-            ...this.repo
+        // Fetch all branches with pagination
+        const branches = await this.octokit.paginate(this.octokit.rest.repos.listBranches, {
+            ...this.repo,
+            per_page: 100
         });
         // Map branches to our internal format
         let processedBranches = branches.map((branch) => ({
@@ -52641,7 +52642,7 @@ class githubIssueHelper {
         }
         try {
             core.info('\x1b[36m❗ Fetching GitHub Issues...\x1b[0m');
-            const { data: issues } = await this.octokit.rest.issues.listForRepo({
+            const issues = await this.octokit.paginate(this.octokit.rest.issues.listForRepo, {
                 ...this.repo,
                 state: 'all',
                 per_page: 100
@@ -52673,9 +52674,10 @@ class githubIssueHelper {
             // Colorful console log for fetching comments
             core.info(`\x1b[36m💬 Fetching Comments for Issue #${issueNumber}...\x1b[0m`);
             // Fetch comments for a specific issue
-            const { data: comments } = await this.octokit.rest.issues.listComments({
+            const comments = await this.octokit.paginate(this.octokit.rest.issues.listComments, {
                 ...this.repo,
-                issue_number: issueNumber
+                issue_number: issueNumber,
+                per_page: 100
             });
             // Process and transform comments
             const processedComments = comments.map((comment) => ({
@@ -52889,8 +52891,9 @@ class githubReleaseHelper {
         }
         try {
             core.info('\x1b[36m🏷️ Fetching GitHub Releases...\x1b[0m');
-            const { data: releases } = await this.octokit.rest.repos.listReleases({
-                ...this.repo
+            const releases = await this.octokit.paginate(this.octokit.rest.repos.listReleases, {
+                ...this.repo,
+                per_page: 100
             });
             const processedReleases = releases.map((release) => ({
                 id: release.id.toString(),
@@ -53048,9 +53051,10 @@ class tagsHelper {
         }
         try {
             core.info('\x1b[36m🏷 Fetching GitHub Tags...\x1b[0m');
-            // First get list of tags
-            const { data: tags } = await this.octokit.rest.repos.listTags({
-                ...this.repo
+            // First get list of tags with pagination
+            const tags = await this.octokit.paginate(this.octokit.rest.repos.listTags, {
+                ...this.repo,
+                per_page: 100
             });
             // Process tags with proper error handling
             const processedTags = await Promise.all(tags.map(async (tag) => {
@@ -53210,20 +53214,23 @@ class pullRequestHelper {
         }
         try {
             core.info('\x1b[36m🔀 Fetching GitHub Pull Requests...\x1b[0m');
-            const { data: prs } = await this.octokit.rest.pulls.list({
+            const prs = await this.octokit.paginate(this.octokit.rest.pulls.list, {
                 ...this.repo,
-                state: 'all' // Get all PRs including closed/merged
+                state: 'all', // Get all PRs including closed/merged
+                per_page: 100
             });
             const processedPRs = await Promise.all(prs.map(async (pr) => {
                 // Fetch comments
-                const { data: comments } = await this.octokit.rest.issues.listComments({
+                const comments = await this.octokit.paginate(this.octokit.rest.issues.listComments, {
                     ...this.repo,
-                    issue_number: pr.number
+                    issue_number: pr.number,
+                    per_page: 100
                 });
                 // Fetch reviews
-                const { data: reviews } = await this.octokit.rest.pulls.listReviews({
+                const reviews = await this.octokit.paginate(this.octokit.rest.pulls.listReviews, {
                     ...this.repo,
-                    pull_number: pr.number
+                    pull_number: pr.number,
+                    per_page: 100
                 });
                 return {
                     id: pr.id,

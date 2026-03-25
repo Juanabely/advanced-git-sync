@@ -18,10 +18,14 @@ export class tagsHelper {
     try {
       core.info('\x1b[36m🏷 Fetching GitHub Tags...\x1b[0m')
 
-      // First get list of tags
-      const { data: tags } = await this.octokit.rest.repos.listTags({
-        ...this.repo
-      })
+      // First get list of tags with pagination
+      const tags: any[] = await this.octokit.paginate(
+        this.octokit.rest.repos.listTags,
+        {
+          ...this.repo,
+          per_page: 100
+        }
+      )
 
       // Process tags with proper error handling
       const processedTags = await Promise.all(

@@ -18,10 +18,14 @@ export class pullRequestHelper {
     try {
       core.info('\x1b[36m🔀 Fetching GitHub Pull Requests...\x1b[0m')
 
-      const { data: prs } = await this.octokit.rest.pulls.list({
-        ...this.repo,
-        state: 'all' // Get all PRs including closed/merged
-      })
+      const prs: any[] = await this.octokit.paginate(
+        this.octokit.rest.pulls.list,
+        {
+          ...this.repo,
+          state: 'all', // Get all PRs including closed/merged
+          per_page: 100
+        }
+      )
 
       const processedPRs = await Promise.all(
         prs.map(
@@ -37,17 +41,22 @@ export class pullRequestHelper {
             merged_at: string | null
           }) => {
             // Fetch comments
-            const { data: comments } =
-              await this.octokit.rest.issues.listComments({
-                ...this.repo,
-                issue_number: pr.number
-              })
-
-            // Fetch reviews
-            const { data: reviews } = await this.octokit.rest.pulls.listReviews(
+            const comments: any[] = await this.octokit.paginate(
+              this.octokit.rest.issues.listComments,
               {
                 ...this.repo,
-                pull_number: pr.number
+                issue_number: pr.number,
+                per_page: 100
+              }
+            )
+
+            // Fetch reviews
+            const reviews: any[] = await this.octokit.paginate(
+              this.octokit.rest.pulls.listReviews,
+              {
+                ...this.repo,
+                pull_number: pr.number,
+                per_page: 100
               }
             )
 

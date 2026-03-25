@@ -17,9 +17,13 @@ export class githubReleaseHelper {
     try {
       core.info('\x1b[36m🏷️ Fetching GitHub Releases...\x1b[0m')
 
-      const { data: releases } = await this.octokit.rest.repos.listReleases({
-        ...this.repo
-      })
+      const releases: any[] = await this.octokit.paginate(
+        this.octokit.rest.repos.listReleases,
+        {
+          ...this.repo,
+          per_page: 100
+        }
+      )
 
       const processedReleases: Release[] = releases.map(
         (release: {
