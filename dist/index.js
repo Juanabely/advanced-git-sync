@@ -52557,7 +52557,14 @@ class githubBranchHelper {
             await exec.exec('git', ['remote', 'add', 'github', githubAuthUrl], {
                 cwd: tmpDir
             });
-            await exec.exec('git', ['push', '-f', 'github', `${commitSha}:refs/heads/${name}`], { cwd: tmpDir });
+            try {
+                core.info(`Attempting standard push to github ${commitSha}:refs/heads/${name}`);
+                await exec.exec('git', ['push', 'github', `${commitSha}:refs/heads/${name}`], { cwd: tmpDir });
+            }
+            catch (pushError) {
+                core.info(`Standard push failed. Attempting force push to github...`);
+                await exec.exec('git', ['push', '-f', 'github', `${commitSha}:refs/heads/${name}`], { cwd: tmpDir });
+            }
         }
         catch (error) {
             throw new Error(`Failed to update branch ${name} on GitHub: ${String(error)}`);
@@ -53670,8 +53677,14 @@ class gitlabBranchHelper {
             await exec.exec('git', ['remote', 'add', 'gitlab', gitlabAuthUrl], {
                 cwd: tmpDir
             });
-            console.log(`git push -f gitlab ${commitSha}:refs/heads/${name}`);
-            await exec.exec('git', ['push', '-f', 'gitlab', `${commitSha}:refs/heads/${name}`], { cwd: tmpDir });
+            try {
+                console.log(`Attempting standard push to gitlab ${commitSha}:refs/heads/${name}`);
+                await exec.exec('git', ['push', 'gitlab', `${commitSha}:refs/heads/${name}`], { cwd: tmpDir });
+            }
+            catch (pushError) {
+                console.log(`Standard push failed. Attempting force push to gitlab...`);
+                await exec.exec('git', ['push', '-f', 'gitlab', `${commitSha}:refs/heads/${name}`], { cwd: tmpDir });
+            }
         }
         finally {
             if (fs.existsSync(tmpDir)) {

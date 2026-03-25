@@ -144,12 +144,23 @@ export class gitlabBranchHelper {
         cwd: tmpDir
       })
 
-      console.log(`git push -f gitlab ${commitSha}:refs/heads/${name}`)
-      await exec.exec(
-        'git',
-        ['push', '-f', 'gitlab', `${commitSha}:refs/heads/${name}`],
-        { cwd: tmpDir }
-      )
+      try {
+        console.log(
+          `Attempting standard push to gitlab ${commitSha}:refs/heads/${name}`
+        )
+        await exec.exec(
+          'git',
+          ['push', 'gitlab', `${commitSha}:refs/heads/${name}`],
+          { cwd: tmpDir }
+        )
+      } catch (pushError) {
+        console.log(`Standard push failed. Attempting force push to gitlab...`)
+        await exec.exec(
+          'git',
+          ['push', '-f', 'gitlab', `${commitSha}:refs/heads/${name}`],
+          { cwd: tmpDir }
+        )
+      }
     } finally {
       if (fs.existsSync(tmpDir)) {
         fs.rmSync(tmpDir, { recursive: true, force: true })

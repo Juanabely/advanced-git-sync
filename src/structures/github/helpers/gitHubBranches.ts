@@ -95,11 +95,23 @@ export class githubBranchHelper {
         cwd: tmpDir
       })
 
-      await exec.exec(
-        'git',
-        ['push', '-f', 'github', `${commitSha}:refs/heads/${name}`],
-        { cwd: tmpDir }
-      )
+      try {
+        core.info(
+          `Attempting standard push to github ${commitSha}:refs/heads/${name}`
+        )
+        await exec.exec(
+          'git',
+          ['push', 'github', `${commitSha}:refs/heads/${name}`],
+          { cwd: tmpDir }
+        )
+      } catch (pushError) {
+        core.info(`Standard push failed. Attempting force push to github...`)
+        await exec.exec(
+          'git',
+          ['push', '-f', 'github', `${commitSha}:refs/heads/${name}`],
+          { cwd: tmpDir }
+        )
+      }
     } catch (error) {
       throw new Error(
         `Failed to update branch ${name} on GitHub: ${String(error)}`
