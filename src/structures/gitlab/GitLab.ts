@@ -81,6 +81,23 @@ export class GitLabClient implements IClient {
     try {
       if (this.config.gitlab?.projectId) {
         this.projectId = this.config.gitlab.projectId
+
+        // Dynamically resolve owner & repo for downstream helpers
+        if (!this.config.gitlab.owner || !this.config.gitlab.repo) {
+          core.info(
+            `Fetching project details to resolve path for Project ID: ${this.projectId}`
+          )
+          const project = await this.gitlab.Projects.show(this.projectId)
+          if (project && project.path_with_namespace) {
+            const parts = project.path_with_namespace.split('/')
+            this.config.gitlab.owner = parts.slice(0, -1).join('/')
+            this.config.gitlab.repo = parts[parts.length - 1]
+            core.info(
+              `Resolved GitLab repository path: ${this.config.gitlab.owner}/${this.config.gitlab.repo}`
+            )
+          }
+        }
+
         return this.projectId
       }
 

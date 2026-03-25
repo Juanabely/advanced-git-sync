@@ -64,8 +64,8 @@ export class githubBranchHelper {
   }
 
   async update(name: string, commitSha: string): Promise<void> {
+    const tmpDir = path.join(process.cwd(), '.tmp-git')
     try {
-      const tmpDir = path.join(process.cwd(), '.tmp-git')
       if (!fs.existsSync(tmpDir)) {
         fs.mkdirSync(tmpDir, { recursive: true })
       }
@@ -81,9 +81,7 @@ export class githubBranchHelper {
       )
 
       const gitlabUrl = this.config.gitlab.host || 'https://gitlab.com'
-      const gitlabRepoPath = this.config.gitlab.projectId
-        ? `${gitlabUrl}/api/v4/projects/${this.config.gitlab.projectId}`
-        : `${gitlabUrl}/${this.config.gitlab.owner}/${this.config.gitlab.repo}.git`
+      const gitlabRepoPath = `${gitlabUrl}/${this.config.gitlab.owner}/${this.config.gitlab.repo}.git`
 
       await exec.exec('git', ['remote', 'add', 'gitlab', gitlabRepoPath], {
         cwd: tmpDir
@@ -101,12 +99,14 @@ export class githubBranchHelper {
         ['push', '-f', 'github', `${commitSha}:refs/heads/${name}`],
         { cwd: tmpDir }
       )
-
-      fs.rmSync(tmpDir, { recursive: true, force: true })
     } catch (error) {
       throw new Error(
         `Failed to update branch ${name} on GitHub: ${String(error)}`
       )
+    } finally {
+      if (fs.existsSync(tmpDir)) {
+        fs.rmSync(tmpDir, { recursive: true, force: true })
+      }
     }
   }
 

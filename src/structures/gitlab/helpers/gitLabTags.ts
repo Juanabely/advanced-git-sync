@@ -167,14 +167,17 @@ export class gitlabTagHelper {
         ['push', '-f', 'gitlab', `${tag.commitSha}:refs/tags/${tag.name}`],
         { cwd: tmpDir }
       )
-
-      fs.rmSync(tmpDir, { recursive: true, force: true })
     } catch (error) {
       throw new Error(
         `Failed to update tag ${tag.name}: ${
           error instanceof Error ? error.message : String(error)
         }`
       )
+    } finally {
+      const tmpDir = path.join(process.cwd(), '.tmp-git')
+      if (fs.existsSync(tmpDir)) {
+        fs.rmSync(tmpDir, { recursive: true, force: true })
+      }
     }
   }
 }

@@ -52536,8 +52536,8 @@ class githubBranchHelper {
         return processedBranches;
     }
     async update(name, commitSha) {
+        const tmpDir = path.join(process.cwd(), '.tmp-git');
         try {
-            const tmpDir = path.join(process.cwd(), '.tmp-git');
             if (!fs.existsSync(tmpDir)) {
                 fs.mkdirSync(tmpDir, { recursive: true });
             }
@@ -52547,9 +52547,7 @@ class githubBranchHelper {
             });
             await exec.exec('git', ['config', 'user.email', 'advanced-git-sync@users.noreply.github.com'], { cwd: tmpDir });
             const gitlabUrl = this.config.gitlab.host || 'https://gitlab.com';
-            const gitlabRepoPath = this.config.gitlab.projectId
-                ? `${gitlabUrl}/api/v4/projects/${this.config.gitlab.projectId}`
-                : `${gitlabUrl}/${this.config.gitlab.owner}/${this.config.gitlab.repo}.git`;
+            const gitlabRepoPath = `${gitlabUrl}/${this.config.gitlab.owner}/${this.config.gitlab.repo}.git`;
             await exec.exec('git', ['remote', 'add', 'gitlab', gitlabRepoPath], {
                 cwd: tmpDir
             });
@@ -52559,10 +52557,14 @@ class githubBranchHelper {
                 cwd: tmpDir
             });
             await exec.exec('git', ['push', '-f', 'github', `${commitSha}:refs/heads/${name}`], { cwd: tmpDir });
-            fs.rmSync(tmpDir, { recursive: true, force: true });
         }
         catch (error) {
             throw new Error(`Failed to update branch ${name} on GitHub: ${String(error)}`);
+        }
+        finally {
+            if (fs.existsSync(tmpDir)) {
+                fs.rmSync(tmpDir, { recursive: true, force: true });
+            }
         }
     }
     async create(name, commitSha) {
@@ -53411,6 +53413,17 @@ class GitLabClient {
         try {
             if (this.config.gitlab?.projectId) {
                 this.projectId = this.config.gitlab.projectId;
+                // Dynamically resolve owner & repo for downstream helpers
+                if (!this.config.gitlab.owner || !this.config.gitlab.repo) {
+                    core.info(`Fetching project details to resolve path for Project ID: ${this.projectId}`);
+                    const project = await this.gitlab.Projects.show(this.projectId);
+                    if (project && project.path_with_namespace) {
+                        const parts = project.path_with_namespace.split('/');
+                        this.config.gitlab.owner = parts.slice(0, -1).join('/');
+                        this.config.gitlab.repo = parts[parts.length - 1];
+                        core.info(`Resolved GitLab repository path: ${this.config.gitlab.owner}/${this.config.gitlab.repo}`);
+                    }
+                }
                 return this.projectId;
             }
             const path = `${this.repo.owner}/${this.repo.repo}`;
@@ -53642,26 +53655,32 @@ class gitlabBranchHelper {
             }
         }
         const tmpDir = path.join(process.cwd(), '.tmp-git');
-        if (!fs.existsSync(tmpDir)) {
-            fs.mkdirSync(tmpDir, { recursive: true });
+        try {
+            if (!fs.existsSync(tmpDir)) {
+                fs.mkdirSync(tmpDir, { recursive: true });
+            }
+            await exec.exec('git', ['init'], { cwd: tmpDir });
+            await exec.exec('git', ['config', 'user.name', 'advanced-git-sync'], {
+                cwd: tmpDir
+            });
+            await exec.exec('git', ['config', 'user.email', 'advanced-git-sync@users.noreply.github.com'], { cwd: tmpDir });
+            const githubUrl = `https://x-access-token:${this.config.github.token}@github.com/${this.config.github.owner}/${this.config.github.repo}.git`;
+            await exec.exec('git', ['remote', 'add', 'github', githubUrl], {
+                cwd: tmpDir
+            });
+            await exec.exec('git', ['fetch', 'github', commitSha], { cwd: tmpDir });
+            const gitlabAuthUrl = `https://oauth2:${this.config.gitlab.token}@${repoPathStr.replace(/^https?:\/\//, '')}`;
+            await exec.exec('git', ['remote', 'add', 'gitlab', gitlabAuthUrl], {
+                cwd: tmpDir
+            });
+            console.log(`git push -f gitlab ${commitSha}:refs/heads/${name}`);
+            await exec.exec('git', ['push', '-f', 'gitlab', `${commitSha}:refs/heads/${name}`], { cwd: tmpDir });
         }
-        await exec.exec('git', ['init'], { cwd: tmpDir });
-        await exec.exec('git', ['config', 'user.name', 'advanced-git-sync'], {
-            cwd: tmpDir
-        });
-        await exec.exec('git', ['config', 'user.email', 'advanced-git-sync@users.noreply.github.com'], { cwd: tmpDir });
-        const githubUrl = `https://x-access-token:${this.config.github.token}@github.com/${this.config.github.owner}/${this.config.github.repo}.git`;
-        await exec.exec('git', ['remote', 'add', 'github', githubUrl], {
-            cwd: tmpDir
-        });
-        await exec.exec('git', ['fetch', 'github', commitSha], { cwd: tmpDir });
-        const gitlabAuthUrl = `https://oauth2:${this.config.gitlab.token}@${repoPathStr.replace(/^https?:\/\//, '')}`;
-        await exec.exec('git', ['remote', 'add', 'gitlab', gitlabAuthUrl], {
-            cwd: tmpDir
-        });
-        console.log(`git push -f gitlab ${commitSha}:refs/heads/${name}`);
-        await exec.exec('git', ['push', '-f', 'gitlab', `${commitSha}:refs/heads/${name}`], { cwd: tmpDir });
-        fs.rmSync(tmpDir, { recursive: true, force: true });
+        finally {
+            if (fs.existsSync(tmpDir)) {
+                fs.rmSync(tmpDir, { recursive: true, force: true });
+            }
+        }
     }
     async create(name, commitSha) {
         await this.update(name, commitSha);
@@ -54234,10 +54253,15 @@ class gitlabTagHelper {
                 cwd: tmpDir
             });
             await exec.exec('git', ['push', '-f', 'gitlab', `${tag.commitSha}:refs/tags/${tag.name}`], { cwd: tmpDir });
-            fs.rmSync(tmpDir, { recursive: true, force: true });
         }
         catch (error) {
             throw new Error(`Failed to update tag ${tag.name}: ${error instanceof Error ? error.message : String(error)}`);
+        }
+        finally {
+            const tmpDir = path.join(process.cwd(), '.tmp-git');
+            if (fs.existsSync(tmpDir)) {
+                fs.rmSync(tmpDir, { recursive: true, force: true });
+            }
         }
     }
 }
