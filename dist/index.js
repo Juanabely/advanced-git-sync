@@ -53407,13 +53407,9 @@ class GitLabClient {
         return host;
     }
     async getProjectId() {
-        if (this.projectId) {
-            return this.projectId;
-        }
         try {
-            if (this.config.gitlab?.projectId) {
-                this.projectId = this.config.gitlab.projectId;
-                // Dynamically resolve owner & repo for downstream helpers
+            if (this.projectId) {
+                // Dynamically resolve owner & repo for downstream helpers if missing
                 if (!this.config.gitlab.owner || !this.config.gitlab.repo) {
                     core.info(`Fetching project details to resolve path for Project ID: ${this.projectId}`);
                     const project = await this.gitlab.Projects.show(this.projectId);

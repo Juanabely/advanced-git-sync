@@ -74,15 +74,9 @@ export class GitLabClient implements IClient {
   }
 
   private async getProjectId(): Promise<number> {
-    if (this.projectId) {
-      return this.projectId
-    }
-
     try {
-      if (this.config.gitlab?.projectId) {
-        this.projectId = this.config.gitlab.projectId
-
-        // Dynamically resolve owner & repo for downstream helpers
+      if (this.projectId) {
+        // Dynamically resolve owner & repo for downstream helpers if missing
         if (!this.config.gitlab.owner || !this.config.gitlab.repo) {
           core.info(
             `Fetching project details to resolve path for Project ID: ${this.projectId}`
@@ -97,7 +91,6 @@ export class GitLabClient implements IClient {
             )
           }
         }
-
         return this.projectId
       }
 
