@@ -52547,7 +52547,8 @@ class githubBranchHelper {
             });
             await exec.exec('git', ['config', 'user.email', 'advanced-git-sync@users.noreply.github.com'], { cwd: tmpDir });
             const gitlabUrl = this.config.gitlab.host || 'https://gitlab.com';
-            const gitlabRepoPath = `${gitlabUrl}/${this.config.gitlab.owner}/${this.config.gitlab.repo}.git`;
+            const gitlabRepoPathStr = `${gitlabUrl}/${this.config.gitlab.owner}/${this.config.gitlab.repo}.git`;
+            const gitlabRepoPath = `https://oauth2:${this.config.gitlab.token}@${gitlabRepoPathStr.replace(/^https?:\/\//, '')}`;
             await exec.exec('git', ['remote', 'add', 'gitlab', gitlabRepoPath], {
                 cwd: tmpDir
             });
