@@ -70,20 +70,33 @@ export async function syncBranches(
   logSyncPlan(branchComparisons)
 
   // Process each branch according to its required action
+  let errorCount = 0
   for (const comparison of branchComparisons) {
-    switch (comparison.action) {
-      case 'create':
-        await createBranch(target, comparison)
-        break
-      case 'update':
-        await updateBranch(target, comparison)
-        break
-      case 'skip':
-        core.info(`⏭️ Skipping ${comparison.name} - already in sync`)
-        break
+    try {
+      switch (comparison.action) {
+        case 'create':
+          await createBranch(target, comparison)
+          break
+        case 'update':
+          await updateBranch(target, comparison)
+          break
+        case 'skip':
+          core.info(`⏭️ Skipping ${comparison.name} - already in sync`)
+          break
+      }
+    } catch (error) {
+      errorCount++
+      core.warning(
+        `Failed to sync branch ${comparison.name}: ${error instanceof Error ? error.message : String(error)}`
+      )
     }
   }
-  core.info('✓ Branch synchronization completed')
+
+  if (errorCount > 0) {
+    core.warning(`Branch synchronization completed with ${errorCount} error(s)`)
+  } else {
+    core.info('✓ Branch synchronization completed')
+  }
 }
 
 async function createBranch(

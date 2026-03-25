@@ -54569,20 +54569,32 @@ async function syncBranches(source, target) {
     core.info('\n🔍 Branch Sync Analysis:');
     logSyncPlan(branchComparisons);
     // Process each branch according to its required action
+    let errorCount = 0;
     for (const comparison of branchComparisons) {
-        switch (comparison.action) {
-            case 'create':
-                await createBranch(target, comparison);
-                break;
-            case 'update':
-                await updateBranch(target, comparison);
-                break;
-            case 'skip':
-                core.info(`⏭️ Skipping ${comparison.name} - already in sync`);
-                break;
+        try {
+            switch (comparison.action) {
+                case 'create':
+                    await createBranch(target, comparison);
+                    break;
+                case 'update':
+                    await updateBranch(target, comparison);
+                    break;
+                case 'skip':
+                    core.info(`⏭️ Skipping ${comparison.name} - already in sync`);
+                    break;
+            }
+        }
+        catch (error) {
+            errorCount++;
+            core.warning(`Failed to sync branch ${comparison.name}: ${error instanceof Error ? error.message : String(error)}`);
         }
     }
-    core.info('✓ Branch synchronization completed');
+    if (errorCount > 0) {
+        core.warning(`Branch synchronization completed with ${errorCount} error(s)`);
+    }
+    else {
+        core.info('✓ Branch synchronization completed');
+    }
 }
 async function createBranch(target, comparison) {
     core.info(`🌱 Creating branch ${comparison.name}`);
@@ -54898,20 +54910,25 @@ async function syncPullRequests(source, target) {
         logSyncPlan(sourcePRs, targetPRs);
         // Process each source PR
         for (const sourcePR of sourcePRs) {
-            const targetPR = targetPRs.find(pr => pr.title === sourcePR.title);
-            if (!targetPR) {
-                core.info(`Creating new PR: ${sourcePR.title} (${sourcePR.state})`);
-                await target.createPullRequest(sourcePR);
+            try {
+                const targetPR = targetPRs.find(pr => pr.title === sourcePR.title);
+                if (!targetPR) {
+                    core.info(`Creating new PR: ${sourcePR.title} (${sourcePR.state})`);
+                    await target.createPullRequest(sourcePR);
+                }
+                else {
+                    if (needsUpdate(sourcePR, targetPR)) {
+                        core.info(`Updating PR: ${sourcePR.title} (${sourcePR.state} → ${targetPR.state})`);
+                        await target.updatePullRequest(targetPR.number, sourcePR);
+                    }
+                    if (sourcePR.state === 'closed' && targetPR.state === 'open') {
+                        core.info(`Closing PR: ${sourcePR.title} (open → closed)`);
+                        await target.closePullRequest(targetPR.number);
+                    }
+                }
             }
-            else {
-                if (needsUpdate(sourcePR, targetPR)) {
-                    core.info(`Updating PR: ${sourcePR.title} (${sourcePR.state} → ${targetPR.state})`);
-                    await target.updatePullRequest(targetPR.number, sourcePR);
-                }
-                if (sourcePR.state === 'closed' && targetPR.state === 'open') {
-                    core.info(`Closing PR: ${sourcePR.title} (open → closed)`);
-                    await target.closePullRequest(targetPR.number);
-                }
+            catch (error) {
+                core.warning(`Failed to sync PR ${sourcePR.title}: ${error instanceof Error ? error.message : String(error)}`);
             }
         }
         return sourcePRs;

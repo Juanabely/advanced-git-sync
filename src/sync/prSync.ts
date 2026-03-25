@@ -39,23 +39,29 @@ export async function syncPullRequests(
 
     // Process each source PR
     for (const sourcePR of sourcePRs) {
-      const targetPR = targetPRs.find(pr => pr.title === sourcePR.title)
+      try {
+        const targetPR = targetPRs.find(pr => pr.title === sourcePR.title)
 
-      if (!targetPR) {
-        core.info(`Creating new PR: ${sourcePR.title} (${sourcePR.state})`)
-        await target.createPullRequest(sourcePR)
-      } else {
-        if (needsUpdate(sourcePR, targetPR)) {
-          core.info(
-            `Updating PR: ${sourcePR.title} (${sourcePR.state} → ${targetPR.state})`
-          )
-          await target.updatePullRequest(targetPR.number!, sourcePR)
-        }
+        if (!targetPR) {
+          core.info(`Creating new PR: ${sourcePR.title} (${sourcePR.state})`)
+          await target.createPullRequest(sourcePR)
+        } else {
+          if (needsUpdate(sourcePR, targetPR)) {
+            core.info(
+              `Updating PR: ${sourcePR.title} (${sourcePR.state} → ${targetPR.state})`
+            )
+            await target.updatePullRequest(targetPR.number!, sourcePR)
+          }
 
-        if (sourcePR.state === 'closed' && targetPR.state === 'open') {
-          core.info(`Closing PR: ${sourcePR.title} (open → closed)`)
-          await target.closePullRequest(targetPR.number!)
+          if (sourcePR.state === 'closed' && targetPR.state === 'open') {
+            core.info(`Closing PR: ${sourcePR.title} (open → closed)`)
+            await target.closePullRequest(targetPR.number!)
+          }
         }
+      } catch (error) {
+        core.warning(
+          `Failed to sync PR ${sourcePR.title}: ${error instanceof Error ? error.message : String(error)}`
+        )
       }
     }
 
